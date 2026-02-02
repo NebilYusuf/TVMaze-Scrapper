@@ -15,19 +15,18 @@ class Show(Base):
 class CastMember(Base):
     __tablename__ = "cast_members"
 
-    # TVMaze person id
-    id = Column(Integer, primary_key=True, index=True)
+    # person id from TVMaze (NOT unique globally in our table)
+    person_id = Column(Integer, primary_key=True)
 
-    # which show this person belongs to
-    show_id = Column(Integer, ForeignKey("shows.id", ondelete="CASCADE"), nullable=False)
+    # show id (part of composite PK)
+    show_id = Column(Integer, ForeignKey("shows.id", ondelete="CASCADE"), primary_key=True)
 
     name = Column(String, nullable=False)
-    birthday = Column(String, nullable=True)  # store as ISO date string: "YYYY-MM-DD"
+    birthday = Column(String, nullable=True)
 
     show = relationship("Show", back_populates="cast")
 
     __table_args__ = (
-        # same person can appear in multiple shows, so uniqueness is (person_id, show_id)
-        UniqueConstraint("id", "show_id", name="uq_cast_person_show"),
         Index("ix_cast_show_id", "show_id"),
     )
+

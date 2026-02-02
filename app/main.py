@@ -10,6 +10,7 @@ from .models import Show, CastMember
 from .schemas import PaginatedShows, ShowOut, CastOut
 from .sort_utils import birthday_sort_key
 
+from .ingest_all import ingest_all_shows
 
 app = FastAPI(title="TVMaze Scraper API")
 
@@ -22,6 +23,19 @@ def root():
 @app.post("/ingest-one")
 async def ingest_one(show_id: int = 1, db: Session = Depends(get_db)):
     result = await ingest_single_show(db, show_id=show_id)
+    return result
+
+@app.post("/ingest")
+async def ingest(
+    concurrency: int = 6,
+    max_pages: int | None = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Ingest all TV shows from TVMaze.
+    Use max_pages for testing (e.g. 1 or 2).
+    """
+    result = await ingest_all_shows(db, concurrency=concurrency, max_pages=max_pages)
     return result
 
 @app.get("/shows", response_model=PaginatedShows)

@@ -36,3 +36,7 @@ class TVMazeClient:
 
     async def get_show_cast(self, show_id: int):
         return await self._get(f"/shows/{show_id}/cast")
+    
+    async def list_shows_by_page(self, page: int):
+        return await self._get("/shows", params={"page": page})
+

@@ -36,16 +36,26 @@ async def ingest_single_show(db: Session, show_id: int = 1) -> dict:
 
         people = [extract_person(x) for x in cast_data]
         for p in people:
-            if p["id"] is None:
-                continue
-            db.add(
-                CastMember(
-                    id=int(p["id"]),
-                    show_id=show_id,
-                    name=p["name"],
-                    birthday=p["birthday"],
+            seen = set()
+            for item in cast_data:
+                p = extract_person(item)
+                if p["id"] is None:
+                    continue
+
+                pid = int(p["id"])
+                if pid in seen:
+                    continue
+                seen.add(pid)
+
+                db.add(
+                    CastMember(
+                        person_id=pid,
+                        show_id=show_id,
+                        name=p["name"],
+                        birthday=p["birthday"],
+                    )
                 )
-            )
+
 
         db.commit()
 
