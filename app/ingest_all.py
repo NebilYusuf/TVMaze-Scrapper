@@ -5,6 +5,8 @@ from sqlalchemy import select
 from .models import Show, CastMember
 from .tvmaze_client import TVMazeClient
 from .ingest_one import extract_person  # reuse the same extractor
+from .db import SessionLocal
+
 
 
 async def ingest_all_shows(db: Session, concurrency: int = 6, max_pages: int | None = None) -> dict:
@@ -48,33 +50,38 @@ async def ingest_all_shows(db: Session, concurrency: int = 6, max_pages: int | N
                 async with sem:
                     cast_data = await client.get_show_cast(show_id)
 
-                # Replace cast for that show (simple and reliable)
-                db.query(CastMember).filter(CastMember.show_id == show_id).delete()
+                # NEW: each task gets its own DB session
+                local_db = SessionLocal()
+                try:
+                    local_db.query(CastMember).filter(
+                        CastMember.show_id == show_id
+                    ).delete()
 
-                seen = set()
+                    seen = set()
+                    for item in cast_data:
+                        p = extract_person(item)
+                        if p["id"] is None:
+                            continue
 
-                for item in cast_data:
-                    p = extract_person(item)
-                    if p["id"] is None:
-                        continue
+                        pid = int(p["id"])
+                        key = (pid, show_id)
+                        if key in seen:
+                            continue
+                        seen.add(key)
 
-                    pid = int(p["id"])
-                    key = (pid, show_id)
-
-                    if key in seen:
-                        continue
-                    seen.add(key)
-
-                    db.add(
-                        CastMember(
-                            person_id=pid,
-                            show_id=show_id,
-                            name=p["name"],
-                            birthday=p["birthday"],
+                        local_db.add(
+                            CastMember(
+                                person_id=pid,
+                                show_id=show_id,
+                                name=p["name"],
+                                birthday=p["birthday"],
+                            )
                         )
-                    )
 
-                db.commit()
+                    local_db.commit()
+                finally:
+                    local_db.close()
+
 
 
             await asyncio.gather(*[fetch_and_store_cast(sid) for sid in show_ids])

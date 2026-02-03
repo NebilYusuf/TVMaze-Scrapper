@@ -71,7 +71,7 @@ def get_shows(
                 id=show.id,
                 name=show.name,
                 cast=[
-                    CastOut(id=c.id, name=c.name, birthday=c.birthday)
+                    CastOut(id=c.person_id, name=c.name, birthday=c.birthday)
                     for c in cast_sorted
                 ],
             )
